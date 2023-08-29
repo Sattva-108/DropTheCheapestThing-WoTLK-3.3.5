@@ -1,0 +1,12 @@
+tag v3.5.3
+3026eab4db7f34d22b1059218b68529b9a56df3f
+David Lynch <kemayo@gmail.com>
+2010-01-22 08:44:57 -0600
+
+Tagging v3.5.3 for release.
+
+
+--------------------
+
+David Lynch:
+	- Change merchant auto-sell trigger.
