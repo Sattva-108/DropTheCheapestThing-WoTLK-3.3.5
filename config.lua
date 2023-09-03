@@ -4,6 +4,8 @@ local module = core:NewModule("Config")
 local AceTimer = LibStub("AceTimer-3.0")
 local db
 
+local isCachePerformed = false
+
 function module:removable_item(itemID, list_name)
 local list_setting = list_name == "Never Consider" and "never" or "always"
 	local item_name, _, _, _, _, _, _, _, _, item_icon = GetItemInfo(itemID)
@@ -68,6 +70,18 @@ function module:CreateCategory(name, group)
 	return group.args[name]
 end
 
+local function cacheItemInfo(itemID)
+	isCachePerformed = false
+	-- Return if the item is already cached
+	if GetItemInfo(itemID) ~= nil then
+		return
+	end
+
+	-- Query for the missing item info
+	GameTooltip:SetHyperlink("item:"..itemID)
+	--print("Query Item:" .. itemID)
+	isCachePerformed = true
+end
 
 
 local function item_list_group(name, order, description, db_table)
@@ -128,6 +142,7 @@ local function item_list_group(name, order, description, db_table)
 		},
 	}
 	for itemID in pairs(db_table) do
+		cacheItemInfo(itemID)
 		--print("ItemID:", itemID)
 		local itemName, _, _, _, _, itemType = GetItemInfo(itemID)
 		if itemName and itemType then
@@ -354,6 +369,11 @@ function module:ShowConfig()
 			end
 		end)
 	end
+	if isCachePerformed then
+		AceTimer:ScheduleTimer(function() module:Refresh() AceConfigDialog:Open("DropTheCheapestThing") end, 1)
+	end
+	-- FIXME: do we really need to call it all the time?
+	module:Refresh()
 end
 
 function module:HideConfig()
