@@ -7,7 +7,7 @@ function module:OnInitialize()
 	self.db = core.db:RegisterNamespace("Merchant", {
 		profile = {
 			button = true,
-			auto = false,
+			auto = true,
 		},
 	})
 	db = self.db

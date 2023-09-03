@@ -1,16 +1,38 @@
 local core = LibStub("AceAddon-3.0"):GetAddon("DropTheCheapestThing")
 local module = core:NewModule("Config")
+-- Import AceTimer
+local AceTimer = LibStub("AceTimer-3.0")
 local db
 
-local function removable_item(itemid)
-	local itemname = GetItemInfo(itemid)
+function module:removable_item(itemID, list_name)
+local list_setting = list_name == "Never Consider" and "never" or "always"
+	local item_name, _, _, _, _, _, _, _, _, item_icon = GetItemInfo(itemID)
+
+	--print("Function called with list_name: " .. list_name)  -- New debug statement
+	--print("List setting: " .. list_setting)
+	--print("ItemID: " .. itemID)
+
+
 	return {
 		type = "execute",
-		name = itemname or 'itemid:'..tostring(itemid),
-		desc = not itemname and "Item isn't cached" or nil,
-		arg = itemid,
+		name = item_name or 'itemid:' .. tostring(itemID),
+		desc = not item_name and "Item isn't cached" or "Click to remove from the " .. list_setting .. " consider list",
+		image = item_icon,
+		width = "30%",
+		arg = itemID,
+		func = function()
+			core.db.profile[list_setting .. "_consider"][itemID] = nil
+			core:BAG_UPDATE()
+
+			local args = module.options.args[list_setting].args.remove.args
+			args[tostring(itemID)] = nil
+
+			LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
+		end,
 	}
 end
+
+
 
 local function item_list_group(name, order, description, db_table)
 	local group = {
@@ -32,8 +54,10 @@ local function item_list_group(name, order, description, db_table)
 		set = function(info, v)
 			local itemid = core.link_to_id(v) or tonumber(v)
 			db_table[itemid] = true
-			group.args.remove.args[tostring(itemid)] = removable_item(itemid)
+			group.args.remove.args[tostring(itemid)] = module:removable_item(itemid, name)
 			core:BAG_UPDATE()
+			-- Schedule a timer to call ClearFocus() after a delay
+			AceTimer:ScheduleTimer(function() _G["AceGUI-3.0EditBox1"]:ClearFocus() end, 0.01)
 		end,
 		validate = function(info, v)
 			if v:match("^%d+$") or v:match("item:%d+") then
@@ -61,7 +85,7 @@ local function item_list_group(name, order, description, db_table)
 		},
 	}
 	for itemid in pairs(db_table) do
-		group.args.remove.args[tostring(itemid)] = removable_item(itemid)
+		group.args.remove.args[tostring(itemid)] = module:removable_item(itemid, name)
 	end
 	return group
 end
@@ -136,9 +160,112 @@ function module:OnInitialize()
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("DropTheCheapestThing", "DropTheCheapestThing")
 end
 
-function module:ShowConfig()
-	LibStub("AceConfigDialog-3.0"):Open("DropTheCheapestThing")
+local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+
+local function SetDialogPosition(dialog)
+	local frame = dialog.frame
+	frame:ClearAllPoints()
+
+	local adiBagsContainer = _G["AdiBagsContainer1"]
+	if IsAddOnLoaded("AdiBags") and adiBagsContainer and adiBagsContainer:IsShown() then
+		frame:SetPoint("TOP", adiBagsContainer, "BOTTOM", 0, -10) -- Attach the top of our frame to the bottom of AdiBagsContainer1
+	else
+		frame:SetPoint("CENTER", 0, -200) -- Set the position of the frame 200 px below the center
+	end
 end
+
+function module:ShowConfig()
+	--AceConfigDialog:SetDefaultSize("DropTheCheapestThing", 800, 200) -- Specify custom width and height of GUI here
+	AceConfigDialog:SelectGroup("DropTheCheapestThing", "always") -- Open Always Consider tab
+	AceConfigDialog:Open("DropTheCheapestThing")
+
+	local adiBagsContainer = _G["AdiBagsContainer1"]
+	if IsAddOnLoaded("AdiBags") and adiBagsContainer and not adiBagsContainer:IsShown() then
+		adiBagsContainer:Show() -- show AdiBags bag
+	end
+
+	local dialog = AceConfigDialog.OpenFrames["DropTheCheapestThing"]
+
+	if dialog then
+		-- Apply the custom position only once, after opening the frame
+		hooksecurefunc(dialog.frame, "Show", function()
+			-- Only apply SetDialogPosition to frames belonging to your addon
+			if dialog == AceConfigDialog.OpenFrames["DropTheCheapestThing"] then
+				if not module:IsConfigShown() then
+					--SetDialogPosition(dialog)
+
+				end
+			end
+		end)
+	end
+end
+
+function module:HideConfig()
+	local dialog = AceConfigDialog.OpenFrames["DropTheCheapestThing"]
+	if dialog then
+		dialog:Hide()
+	end
+end
+
+function module:IsConfigShown()
+	local dialog = AceConfigDialog.OpenFrames["DropTheCheapestThing"]
+	if dialog then
+		return dialog:IsShown()
+	else
+		return false
+	end
+end
+
+function module:ToggleConfig()
+	local adiBagsContainer = _G["AdiBagsContainer1"]
+
+	if self:IsConfigShown() then
+		self:HideConfig()
+
+		-- If AdiBags is loaded and the bag is shown, hide it when closing the config
+		if IsAddOnLoaded("AdiBags") and adiBagsContainer and adiBagsContainer:IsShown() then
+			adiBagsContainer:Hide()
+		end
+	else
+		self:ShowConfig()
+
+		-- If AdiBags is loaded and the bag is not shown, show it when opening the config
+		if IsAddOnLoaded("AdiBags") and adiBagsContainer and not adiBagsContainer:IsShown() then
+			adiBagsContainer:Show()
+		end
+	end
+end
+
+function module:AddItemToAlwaysConsider(itemID)
+	if not itemID then
+		return
+	end
+
+	-- Add the new item to the 'always consider' list in the GUI
+	local newItem = self:removable_item(itemID, "always_consider")
+	self.options.args.always.args.remove.args[tostring(itemID)] = newItem
+
+	-- Notify the configuration system that a change occurred
+	LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
+end
+
+function module:AddItemToNeverConsider(itemID)
+	if not itemID then
+		return
+	end
+
+	-- Add the new item to the 'never consider' list in the GUI
+	local newItem = self:removable_item(itemID, "never_consider")
+	self.options.args.never.args.remove.args[tostring(itemID)] = newItem
+
+	-- Notify the configuration system that a change occurred
+	LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
+end
+
+
+
+
+
 
 SLASH_DROPTHECHEAPESTTHING1 = "/dropcheap"
 SLASH_DROPTHECHEAPESTTHING2 = "/dtct"

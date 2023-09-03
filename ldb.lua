@@ -19,21 +19,43 @@ function dataobject:OnTooltipShow()
 end
 
 function dataobject:OnClick(button)
+	if CursorHasItem() and button == "LeftButton" then
+		local _, itemID = GetCursorInfo()
+		ClearCursor()
+
+		if itemID then
+			core.db.profile.always_consider[itemID] = true
+			core:BAG_UPDATE()
+
+			-- Update the 'always consider' list in the GUI
+			local config = core:GetModule("Config", true)
+			if config then
+				config:AddItemToAlwaysConsider(itemID)
+			end
+		end
+		return
+	end
 	if button == "RightButton" then
 		if IsControlKeyDown() then
 			-- add topmost item to the ignore list
-			-- TODO: Update the config screen
 			local slots = MerchantFrame:IsVisible() and core.sell_slots or core.drop_slots
 			if #slots == 0 then return end
 			local id = core.link_to_id(core.slot_contents[table.remove(slots, 1)])
 			if not id then return end -- this really shouldn't happen... but just in case
 			core.db.profile.never_consider[id] = true
 			core:BAG_UPDATE()
-		else
-			-- just show the config
+
+			-- Update the 'never consider' list in the GUI
 			local config = core:GetModule("Config", true)
 			if config then
-				config:ShowConfig()
+				config:AddItemToNeverConsider(id)
+			end
+		else
+
+			-- toggle the config
+			local config = core:GetModule("Config", true)
+			if config then
+				config:ToggleConfig()
 			end
 		end
 	else
@@ -50,7 +72,7 @@ local END = "|r"
 core.RegisterCallback("LDB", "Junk_Update", function(callback, drop_count, sell_count, drop_total, sell_total, total)
 	if drop_count == 0 then
 		dataobject.text = ''
-		dataobject.icon = DEFAULT_ICON
+		-- dataobject.icon = DEFAULT_ICON
 		return
 	end
 	local db = module.db.profile.text
@@ -62,7 +84,7 @@ core.RegisterCallback("LDB", "Junk_Update", function(callback, drop_count, sell_
 		WHITE .. (db.junkcount and drop_count or '') .. END ..
 		WHITE .. ((db.junkcount and db.totalprice) and ' @ ' or '') .. END ..
 		WHITE .. (db.totalprice and core.copper_to_pretty_money(drop_total) or '') .. END
-	dataobject.icon = select(10, GetItemInfo(core.slot_contents[core.drop_slots[1]]))
+	-- dataobject.icon = select(10, GetItemInfo(core.slot_contents[core.drop_slots[1]]))
 end)
 
 function module:OnInitialize()
