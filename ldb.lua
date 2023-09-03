@@ -12,10 +12,10 @@ local dataobject = LibStub("LibDataBroker-1.1"):NewDataObject("DropTheCheapestTh
 })
 
 function dataobject:OnTooltipShow()
-	self:AddLine("Junk To "..(MerchantFrame:IsVisible() and "Sell" or "Drop"))
-	core.add_junk_to_tooltip(self, MerchantFrame:IsVisible() and core.sell_slots or core.drop_slots)
-	self:AddLine("|cffeda55fShift-Click|r to ".. (MerchantFrame:IsVisible() and "sell" or "delete") .." the cheapest item.", 0.2, 1, 0.2, 1)
-	self:AddLine("|cffeda55fControl-Right-Click|r to add the current cheapest item to the ignore list.", 0.2, 1, 0.2, 1)
+	GameTooltip:AddLine("Junk To "..(MerchantFrame:IsVisible() and "Sell" or "Drop"))
+	core.add_junk_to_tooltip(GameTooltip, MerchantFrame:IsVisible() and core.sell_slots or core.drop_slots)
+	GameTooltip:AddLine("|cffeda55fShift-Click|r to ".. (MerchantFrame:IsVisible() and "sell" or "delete") .." the cheapest item.", 0.2, 1, 0.2, 1)
+	GameTooltip:AddLine("|cffeda55fControl-Right-Click|r to add the current cheapest item to the ignore list.", 0.2, 1, 0.2, 1)
 end
 
 function dataobject:OnClick(button)
@@ -32,6 +32,12 @@ function dataobject:OnClick(button)
 			if config then
 				config:AddItemToAlwaysConsider(itemID)
 			end
+		end
+		-- Refresh the tooltip if it's showing
+		if GameTooltip:GetOwner() == icon.objects["DropTheCheapestThing"] then
+			GameTooltip:ClearLines()
+			dataobject:OnTooltipShow()
+			GameTooltip:Show()
 		end
 		return
 	end
@@ -63,6 +69,12 @@ function dataobject:OnClick(button)
 		if #slots == 0 then return end
 		if not IsShiftKeyDown() then return end
 		core.drop_bagslot(table.remove(slots, 1))
+	end
+	-- Refresh the tooltip if it's showing
+	if GameTooltip:GetOwner() == icon.objects["DropTheCheapestThing"] then
+		GameTooltip:ClearLines()
+		dataobject:OnTooltipShow()
+		GameTooltip:Show()
 	end
 end
 
