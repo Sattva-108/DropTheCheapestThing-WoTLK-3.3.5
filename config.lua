@@ -141,6 +141,64 @@ local function item_list_group(name, order, description, db_table)
 	return group
 end
 
+local function getProfileList()
+	local profiles = db:GetProfiles()
+	local profileList = {}
+	for _, key in ipairs(profiles) do
+		profileList[key] = key
+	end
+	return profileList
+end
+
+local function createProfile(newProfileName)
+	if newProfileName and newProfileName ~= "" then
+		db:SetProfile(newProfileName)
+		module:Refresh()
+	end
+end
+
+local function tryDeleteProfile(profileKey)
+	-- Check if the profile to be deleted is the active profile
+	if db:GetCurrentProfile() == profileKey then
+		local profiles = db:GetProfiles()
+		local foundAlternativeProfile = false
+
+		-- Try to switch to the "Default" profile if it exists and is not the active profile
+		for _, p in ipairs(profiles) do
+			if p == "Default" and p ~= profileKey then
+				db:SetProfile(p)
+				print("Switched to profile:", p)
+				foundAlternativeProfile = true
+				break
+			end
+		end
+
+		-- If the "Default" profile was not found, switch to another profile
+		if not foundAlternativeProfile then
+			for _, p in ipairs(profiles) do
+				if p ~= profileKey then
+					db:SetProfile(p)
+					print("Switched to profile:", p)
+					foundAlternativeProfile = true
+					break
+				end
+			end
+		end
+
+		-- If no alternative profile was found, print an error message and return
+		if not foundAlternativeProfile then
+			print("Error: Cannot delete the active profile when there are no other profiles available.")
+			return
+		end
+	end
+
+	-- Delete the profile after switching (if needed)
+	db:DeleteProfile(profileKey, true) -- The second argument "true" enables the built-in confirmation dialog
+	module:Refresh()
+end
+
+
+
 function module:OnInitialize()
 	db = core.db
 
@@ -200,6 +258,53 @@ function module:OnInitialize()
 			},
 			always = item_list_group("Always Consider", 20, "Items listed here will *always* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen. Be careful with this -- you'll never be prompted about it, and it will have no qualms about dropping things that could be auctioned for 5000g.", db.profile.always_consider),
 			never = item_list_group("Never Consider", 30, "Items listed here will *never* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen.", db.profile.never_consider),
+			profiles = {
+				type = "group",
+				name = "Profiles",
+				order = 1000,
+				args = {
+					select_profile = {
+						type = "select",
+						name = "Available Profiles",
+						desc = "Select one of the available profiles",
+						values = getProfileList,
+						get = function() return db:GetCurrentProfile() end,
+						set = function(_, profileKey) db:SetProfile(profileKey); module:Refresh() print("Switched to profile:", profileKey) end,
+						order = 10,
+					},
+					blank1 = {
+						type = "description",
+						name = "",
+						desc = "",
+						width = "full",
+						order = 20,
+					},
+					create_profile = {
+						type = "input",
+						name = "Create Profile",
+						desc = "Enter a name for a new profile",
+						set = function(_, newProfileName) createProfile(newProfileName) print("Switched to profile:", newProfileName) end, -- Set function to create a new profile
+						order = 30,
+					},
+					blank2 = {
+						type = "description",
+						name = "",
+						desc = "",
+						width = "full",
+						order = 40,
+					},
+					delete_profile = {
+						type = "select",
+						name = "Delete Profile",
+						desc = "Select a profile to delete",
+						values = getProfileList,
+						set = function(_, profileKey) tryDeleteProfile(profileKey) end,
+						confirm = true,
+						confirmText = "Are you sure you want to delete this profile?",
+						order = 50,
+					},
+				},
+			},
 		},
 		plugins = {
 			--profiles = { profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(db), },
