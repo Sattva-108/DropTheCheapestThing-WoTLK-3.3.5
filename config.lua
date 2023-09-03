@@ -28,8 +28,44 @@ local list_setting = list_name == "Never Consider" and "never" or "always"
 			args[tostring(itemID)] = nil
 
 			LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
+
+			-- Refresh the GUI
+			module:Refresh()
+
 		end,
 	}
+end
+
+local categoryOrder = {
+	["Trade Goods"] = 100,
+	["Consumable"] = 200,
+	["Miscellaneous"] = 300,
+	["Armor"] = 400,
+	["Weapon"] = 500,
+	["Container"] = 600,
+	["Gem"] = 700,
+	["Key"] = 800,
+	["Money"] = 900,
+	["Reagent"] = 1000,
+	["Recipe"] = 1100,
+	["Projectile"] = 1200,
+	["Quest"] = 1300,
+	["Quiver"] = 1400,
+	["Junk"] = 1400,
+}
+
+function module:CreateCategory(name, group)
+	if not group.args[name] then
+		local order = categoryOrder[name] or 50  -- Fallback to higher order if unknown category
+		group.args[name] = {
+			type = "group",
+			name = name,
+			inline = true,
+			order = order,
+			args = {}
+		}
+	end
+	return group.args[name]
 end
 
 
@@ -54,7 +90,14 @@ local function item_list_group(name, order, description, db_table)
 		set = function(info, v)
 			local itemid = core.link_to_id(v) or tonumber(v)
 			db_table[itemid] = true
-			group.args.remove.args[tostring(itemid)] = module:removable_item(itemid, name)
+
+			-- Get and create a proper category for a new item, then add it
+			local itemName, _, _, _, _, itemType = GetItemInfo(itemid)
+			if itemName and itemType then
+				local category = module:CreateCategory(itemType, group.args.remove)
+				category.args[tostring(itemid)] = module:removable_item(itemid, name)
+			end
+
 			core:BAG_UPDATE()
 			-- Schedule a timer to call ClearFocus() after a delay
 			AceTimer:ScheduleTimer(function() _G["AceGUI-3.0EditBox1"]:ClearFocus() end, 0.01)
@@ -84,8 +127,16 @@ local function item_list_group(name, order, description, db_table)
 			},
 		},
 	}
-	for itemid in pairs(db_table) do
-		group.args.remove.args[tostring(itemid)] = module:removable_item(itemid, name)
+	for itemID in pairs(db_table) do
+		--print("ItemID:", itemID)
+		local itemName, _, _, _, _, itemType = GetItemInfo(itemID)
+		if itemName and itemType then
+			--print("ItemName:", itemName, "ItemType:", itemType)
+			local category = module:CreateCategory(itemType, group.args.remove)
+			category.args[tostring(itemID)] = module:removable_item(itemID, name)
+		else
+			--print("Item info missing for:", itemID)
+		end
 	end
 	return group
 end
@@ -242,10 +293,16 @@ function module:AddItemToAlwaysConsider(itemID)
 	end
 
 	-- Add the new item to the 'always consider' list in the GUI
-	local newItem = self:removable_item(itemID, "always_consider")
-	self.options.args.always.args.remove.args[tostring(itemID)] = newItem
+	local always_consider = self.options.args.always.args.remove
+	local itemName, _, _, _, _, itemType = GetItemInfo(itemID)
+	if itemName and itemType then
+		local category = module:CreateCategory(itemType, always_consider)
+		category.args[tostring(itemID)] = module:removable_item(itemID, "Always Consider")
+	end
 
-	-- Notify the configuration system that a change occurred
+	core.db.profile.always_consider[itemID] = true
+	core:BAG_UPDATE()
+
 	LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
 end
 
@@ -255,15 +312,29 @@ function module:AddItemToNeverConsider(itemID)
 	end
 
 	-- Add the new item to the 'never consider' list in the GUI
-	local newItem = self:removable_item(itemID, "never_consider")
-	self.options.args.never.args.remove.args[tostring(itemID)] = newItem
+	local never_consider = self.options.args.never.args.remove
+	local itemName, _, _, _, _, itemType = GetItemInfo(itemID)
+	if itemName and itemType then
+		local category = module:CreateCategory(itemType, never_consider)
+		category.args[tostring(itemID)] = module:removable_item(itemID, "Never Consider")
+	end
 
-	-- Notify the configuration system that a change occurred
+	core.db.profile.never_consider[itemID] = true
+	core:BAG_UPDATE()
+
 	LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
 end
 
 
+function module:Refresh()
+	-- Rebuild Always Consider group
+	local always_group = item_list_group("Always Consider", 20, "Items listed here will *always* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen. Be careful with this -- you'll never be prompted about it, and it will have no qualms about dropping things that could be auctioned for 5000g.", db.profile.always_consider)
+	module.options.args.always = always_group
 
+	-- Rebuild Never Consider group
+	local never_group = item_list_group("Never Consider", 30, "Items listed here will *never* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen.", db.profile.never_consider)
+	module.options.args.never = never_group
+end
 
 
 
