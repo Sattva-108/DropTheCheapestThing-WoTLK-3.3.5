@@ -4,6 +4,11 @@ It's a fork, improvement, for an outdated version of 3.3.5 addon.<br>
 
 ### Original Author: [Kemayo](https://legacy.curseforge.com/members/kemayo/projects)
 
+## Install
+
+- Download **` DropTheCheapestThing.rar `** from [**Last Release**](https://github.com/Sattva-108/DropTheCheapestThing-WoTLK-3.3.5/releases).
+- Put ` DropTheCheapestThing ` folder inside the **Interface / Addons** of your WoW Game Folder.
+
 ## What's new in this modification
 - **Add item to "Always Consider"** to ***"De-Junk"*** via **Minimap Button**. 
 - **Sort Items in the GUI** by categories:
