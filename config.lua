@@ -8,7 +8,13 @@ local isCachePerformed = false
 
 function module:removable_item(itemID, list_name)
 local list_setting = list_name == "Never Consider" and "never" or "always"
-	local item_name, _, _, _, _, _, _, _, _, item_icon = GetItemInfo(itemID)
+	local item_name, _, item_rarity, _, _, _, _, _, _, item_icon = GetItemInfo(itemID)
+
+	-- Get the color for the item's rarity
+	local rarityColor = select(4, GetItemQualityColor(item_rarity))
+
+	-- If item_name exists, wrap it in the color code. Otherwise, use a default representation.
+	local coloredItemName = item_name and rarityColor .. item_name .. "|r" or 'itemid:' .. tostring(itemID)
 
 	--print("Function called with list_name: " .. list_name)  -- New debug statement
 	--print("List setting: " .. list_setting)
@@ -17,7 +23,7 @@ local list_setting = list_name == "Never Consider" and "never" or "always"
 
 	return {
 		type = "execute",
-		name = item_name or 'itemid:' .. tostring(itemID),
+		name = coloredItemName,
 		desc = not item_name and "Item isn't cached" or "Click to remove from the " .. list_setting .. " consider list",
 		image = item_icon,
 		width = "30%",
