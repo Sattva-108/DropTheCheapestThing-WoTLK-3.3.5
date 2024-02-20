@@ -290,7 +290,7 @@ function module:OnInitialize()
 						desc = "Select one of the available profiles",
 						values = getProfileList,
 						get = function() return db:GetCurrentProfile() end,
-						set = function(_, profileKey) db:SetProfile(profileKey); module:Refresh() print("Switched to profile:", profileKey) end,
+						set = function(_, profileKey) db:SetProfile(profileKey); module:Refresh() core:BAG_UPDATE() print("Switched to profile:", profileKey) end,
 						order = 10,
 					},
 					blank1 = {
