@@ -39,6 +39,8 @@ function core:OnInitialize()
 			auction_threshold = 1,
 			full_stacks = false,
 			auto_delete_toggle = true,
+			combat_delete_toggle = true,
+			print_delete_toggle = false,
 		},
 	}, DEFAULT)
 	self.db = db
@@ -245,7 +247,12 @@ core.drop_bagslot = drop_bagslot
 -- Function to delete items from the auto_delete list
 function core:deleteAutoDeleteItems()
 	local autoDeleteList = core.db.profile.auto_delete or {} -- Retrieve the auto_delete list from your addon's configuration
-	if not core.db.profile.auto_delete_toggle then return end
+	if not core.db.profile.auto_delete_toggle or (not core.db.profile.combat_delete_toggle and UnitAffectingCombat('Player')) then return end
+
+	-- Table to store deleted items
+	if not core.deletedItems then
+		core.deletedItems = {}
+	end
 
 	-- Iterate through the bags and slots
 	for bag = 0, 16 do
@@ -254,7 +261,15 @@ function core:deleteAutoDeleteItems()
 			if item then
 				local itemId = tonumber(item:match("item:(%d+)")) -- Extract item ID from the item link
 				if autoDeleteList[itemId] then -- Check if the item ID is in the auto_delete list
-					print('Deleting ' .. item .. ' (' .. bag + 1 .. ',' .. slot .. ')')
+					local itemKey = bag .. "-" .. slot
+
+					if not core.deletedItems[itemKey] and core.db.profile.print_delete_toggle then
+						print('Deleting ' .. item .. ' (' .. bag + 1 .. ',' .. slot .. ')')
+						core.deletedItems[itemKey] = true
+
+						AceTimer:ScheduleTimer(function() core.deletedItems = {} end, 1)
+					end
+
 					PickupContainerItem(bag, slot)
 					if CursorHasItem() then
 						DeleteCursorItem()

@@ -165,7 +165,7 @@ local function item_list_group(name, order, description, db_table)
 	-- FIXME: is it needed?
 	--db.profile.auto_delete = db.profile.auto_delete or {}
 
-	-- Add checkbox toggle only for "Auto Delete Items" page
+	-- Add checkbox toggles for "Auto Delete Items" page
 	if name == "Auto Delete Items" then
 		group.args.auto_delete_toggle = {
 			type = "toggle",
@@ -175,7 +175,26 @@ local function item_list_group(name, order, description, db_table)
 			set = function(info, v) db.profile.auto_delete_toggle = v end,
 			order = 10,
 			width = "full",
+		}
 
+		group.args.combat_delete_toggle = {
+			type = "toggle",
+			name = "Delete in Combat",
+			desc = "Toggle to enable auto deletion of items during combat.",
+			get = function(info) return db.profile.combat_delete_toggle end,
+			set = function(info, v) db.profile.combat_delete_toggle = v end,
+			order = 15,
+			width = "full",
+		}
+
+		group.args.print_delete_toggle = {
+			type = "toggle",
+			name = "Print Deleted Items",
+			desc = "Toggle to print deleted items to chat.",
+			get = function(info) return db.profile.print_delete_toggle end,
+			set = function(info, v) db.profile.print_delete_toggle = v end,
+			order = 16,
+			width = "full",
 		}
 	end
 
