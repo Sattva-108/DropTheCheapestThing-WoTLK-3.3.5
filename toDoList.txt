@@ -5,3 +5,6 @@
 Auto Delete Items:
     - Make the print optional
     - Make it optional to delete in combat.
+
+GUI:
+    - Make it Remember last opened page, during current session, to not always open at "Always Consider" page.

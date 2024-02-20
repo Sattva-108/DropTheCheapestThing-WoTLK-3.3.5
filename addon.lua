@@ -38,6 +38,7 @@ function core:OnInitialize()
 			auction = false,
 			auction_threshold = 1,
 			full_stacks = false,
+			auto_delete_toggle = true,
 		},
 	}, DEFAULT)
 	self.db = db
@@ -244,6 +245,7 @@ core.drop_bagslot = drop_bagslot
 -- Function to delete items from the auto_delete list
 function core:deleteAutoDeleteItems()
 	local autoDeleteList = core.db.profile.auto_delete or {} -- Retrieve the auto_delete list from your addon's configuration
+	if not core.db.profile.auto_delete_toggle then return end
 
 	-- Iterate through the bags and slots
 	for bag = 0, 16 do

@@ -165,6 +165,20 @@ local function item_list_group(name, order, description, db_table)
 	-- FIXME: is it needed?
 	--db.profile.auto_delete = db.profile.auto_delete or {}
 
+	-- Add checkbox toggle only for "Auto Delete Items" page
+	if name == "Auto Delete Items" then
+		group.args.auto_delete_toggle = {
+			type = "toggle",
+			name = "Enable Auto Delete",
+			desc = "Toggle to enable auto deletion for items on this list.",
+			get = function(info) return db.profile.auto_delete_toggle end,
+			set = function(info, v) db.profile.auto_delete_toggle = v end,
+			order = 10,
+			width = "full",
+
+		}
+	end
+
 	for itemID in pairs(db_table) do
 		cacheItemInfo(itemID)
 		--print("ItemID:", itemID)
