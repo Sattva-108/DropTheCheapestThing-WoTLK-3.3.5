@@ -1,4 +1,5 @@
 local core = LibStub("AceAddon-3.0"):NewAddon("DropTheCheapestThing", "AceEvent-3.0", "AceBucket-3.0")
+local AceTimer = LibStub("AceTimer-3.0")
 
 local debugf = tekDebug and tekDebug:GetFrame("DropTheCheapestThing")
 local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", ...)) end end
@@ -33,6 +34,7 @@ function core:OnInitialize()
 			sell_threshold = 0,
 			always_consider = {},
 			never_consider = {},
+			auto_delete = {},
 			auction = false,
 			auction_threshold = 1,
 			full_stacks = false,
@@ -235,3 +237,42 @@ function drop_bagslot(bagslot, sell_only)
 end
 core.drop_bagslot = drop_bagslot
 
+-- Automatically delete unwanted items, or open items (like clams).
+-- To add/remove items, edit one of the following lists and (re)run the page.
+-- Initial Code from addon named Hack.
+
+-- Function to delete items from the auto_delete list
+function core:deleteAutoDeleteItems()
+	local autoDeleteList = core.db.profile.auto_delete or {} -- Retrieve the auto_delete list from your addon's configuration
+
+	-- Iterate through the bags and slots
+	for bag = 0, 16 do
+		for slot = 1, GetContainerNumSlots(bag) do
+			local item = GetContainerItemLink(bag, slot)
+			if item then
+				local itemId = tonumber(item:match("item:(%d+)")) -- Extract item ID from the item link
+				if autoDeleteList[itemId] then -- Check if the item ID is in the auto_delete list
+					print('Deleting ' .. item .. ' (' .. bag + 1 .. ',' .. slot .. ')')
+					PickupContainerItem(bag, slot)
+					if CursorHasItem() then
+						DeleteCursorItem()
+					end
+				end
+			end
+		end
+	end
+end
+
+
+-- Schedule the function to run 1 second after an item is picked up
+local function onItemPush()
+	AceTimer:ScheduleTimer(function() core:deleteAutoDeleteItems() end, 1)
+end
+
+-- Register event to trigger when an item is pushed to the bag
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("ITEM_PUSH")
+frame:SetScript("OnEvent", onItemPush)
+
+-- run delete items function initially with delay for DB to have time to init.
+AceTimer:ScheduleTimer(function() core:deleteAutoDeleteItems() end, 1)

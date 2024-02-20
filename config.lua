@@ -7,7 +7,16 @@ local db
 local isCachePerformed = false
 
 function module:removable_item(itemID, list_name)
-local list_setting = list_name == "Never Consider" and "never" or "always"
+	local list_setting
+	if list_name == "Never Consider" then
+		list_setting = "never_consider"
+	elseif list_name == "Always Consider" then
+		list_setting = "always_consider"
+	else
+		-- For "Auto Delete Items" list
+		list_setting = "auto_delete"
+	end
+
 	local item_name, _, item_rarity, _, _, _, _, _, _, item_icon = GetItemInfo(itemID)
 
 	-- Get the color for the item's rarity
@@ -24,16 +33,22 @@ local list_setting = list_name == "Never Consider" and "never" or "always"
 	return {
 		type = "execute",
 		name = coloredItemName,
-		desc = not item_name and "Item isn't cached" or "Click to remove from the " .. list_setting .. " consider list",
+		desc = not item_name and "Item isn't cached" or "Click to remove from the " .. list_name .. " consider list",
 		image = item_icon,
 		width = "30%",
 		arg = itemID,
 		func = function()
-			core.db.profile[list_setting .. "_consider"][itemID] = nil
+			-- Ensure that the necessary keys exist in the profile table
+			core.db.profile[list_setting] = core.db.profile[list_setting] or {}
+			core.db.profile[list_setting][itemID] = nil
+
 			core:BAG_UPDATE()
 
-			local args = module.options.args[list_setting].args.remove.args
-			args[tostring(itemID)] = nil
+			-- Check if the args table and the corresponding keys exist
+			local args = module.options.args[list_setting] and module.options.args[list_setting].args.remove.args
+			if args then
+				args[tostring(itemID)] = nil
+			end
 
 			LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
 
@@ -147,6 +162,9 @@ local function item_list_group(name, order, description, db_table)
 			},
 		},
 	}
+	-- FIXME: is it needed?
+	--db.profile.auto_delete = db.profile.auto_delete or {}
+
 	for itemID in pairs(db_table) do
 		cacheItemInfo(itemID)
 		--print("ItemID:", itemID)
@@ -279,6 +297,7 @@ function module:OnInitialize()
 			},
 			always = item_list_group("Always Consider", 20, "Items listed here will *always* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen. Be careful with this -- you'll never be prompted about it, and it will have no qualms about dropping things that could be auctioned for 5000g.", db.profile.always_consider),
 			never = item_list_group("Never Consider", 30, "Items listed here will *never* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen.", db.profile.never_consider),
+			auto_delete = item_list_group("Auto Delete Items", 40, "Items listed here will be automatically deleted without further prompting.", db.profile.auto_delete),
 			profiles = {
 				type = "group",
 				name = "Profiles",
@@ -456,6 +475,25 @@ function module:AddItemToNeverConsider(itemID)
 	LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
 end
 
+function module:AutoDeleteItem(itemID)
+	if not itemID then
+		return
+	end
+
+	-- Add the new item to the 'auto delete' list in the GUI
+	local auto_delete = self.options.args.auto_delete.args.remove
+	local itemName, _, _, _, _, itemType = GetItemInfo(itemID)
+	if itemName and itemType then
+		local category = module:CreateCategory(itemType, auto_delete)
+		category.args[tostring(itemID)] = module:removable_item(itemID, "Auto Delete Items")
+	end
+
+	core.db.profile.auto_delete[itemID] = true
+	core:BAG_UPDATE()
+
+	LibStub("AceConfigRegistry-3.0"):NotifyChange("DropTheCheapestThing")
+end
+
 
 function module:Refresh()
 	-- Rebuild Always Consider group
@@ -465,6 +503,10 @@ function module:Refresh()
 	-- Rebuild Never Consider group
 	local never_group = item_list_group("Never Consider", 30, "Items listed here will *never* be considered junk and sold/dropped, regardless of the quality threshold that has been chosen.", db.profile.never_consider)
 	module.options.args.never = never_group
+
+	local auto_delete_group = item_list_group("Auto Delete Items", 40, "Items listed here will be automatically deleted without further prompting.", db.profile.auto_delete)
+	module.options.args.auto_delete = auto_delete_group
+
 end
 
 
