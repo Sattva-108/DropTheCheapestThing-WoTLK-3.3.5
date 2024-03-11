@@ -8,3 +8,6 @@ Auto Delete Items:
 
 GUI:
     - Make it Remember last opened page, during current session, to not always open at "Always Consider" page.
+
+Profiles:
+- Make some kind of safe check, may be popup, confirmation, to use same delete list on new character...

@@ -41,6 +41,7 @@ function core:OnInitialize()
 			auto_delete_toggle = true,
 			combat_delete_toggle = true,
 			print_delete_toggle = false,
+			sell_next_vendor = {}
 		},
 	}, DEFAULT)
 	self.db = db
@@ -52,6 +53,9 @@ function core:OnInitialize()
 		self:MERCHANT_SHOW()
 	end
 end
+
+function core:Print(...) ChatFrame1:AddMessage(string.join(" ", "|cFF33FF99DropTCT|r:", ...)) end
+
 
 function core:MERCHANT_SHOW()
 	Debug("MERCHANT_SHOW")
@@ -293,3 +297,33 @@ frame:SetScript("OnEvent", onItemPush)
 
 -- run delete items function initially with delay for DB to have time to init.
 AceTimer:ScheduleTimer(function() core:deleteAutoDeleteItems() end, 1)
+
+--------------------------------------------------------------------------------
+---- XD
+--------------------------------------------------------------------------------
+
+
+-- Handle Alt + click event
+function core:ALT_CLICK_ITEM(bag, slot)
+	local link = GetContainerItemLink(bag, slot)
+	local id = link
+	if id and IsAltKeyDown() then
+		if not core.db.profile.sell_next_vendor[id] == true then
+			-- Add item ID to ignoreList
+			core.db.profile.sell_next_vendor[id] = true
+			core:Print("Item "..id.." added to sell list.")
+			--core:BAG_UPDATE()
+		else
+			core.db.profile.sell_next_vendor[id] = false
+			core:Print("Item "..id.." removed from sell list.")
+			--core:BAG_UPDATE()
+		end
+	end
+end
+
+hooksecurefunc("ContainerFrameItemButton_OnModifiedClick",function(self,button)
+	if button == "RightButton" then
+		local bag,slot=self:GetParent():GetID(),self:GetID();
+		core:ALT_CLICK_ITEM(bag, slot)
+	end
+end);
