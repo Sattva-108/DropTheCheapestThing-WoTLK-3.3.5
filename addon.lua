@@ -6,7 +6,7 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", ...
 
 local db, iterate_bags, slot_sorter, copper_to_pretty_money, encode_bagslot,
 	decode_bagslot, pretty_bagslot_name, drop_bagslot, add_junk_to_tooltip,
-	link_to_id, item_value, GetConsideredItemInfo
+	link_to_id, item_value, GetConsideredItemInfo, sell_next_vendor_items
 
 local drop_slots = {}
 local sell_slots = {}
@@ -112,6 +112,13 @@ function core:BAG_UPDATE(updated_bags)
 					total_sell = total_sell + slot_values[bagslot]
 					table.insert(sell_slots, bagslot)
 				end
+				-- Check if the item is marked for selling at the next vendor visit
+				if db.profile.sell_next_vendor[itemid] == true then
+					print("true")
+					total_drop = total_drop + slot_values[bagslot]
+					table.insert(drop_slots, bagslot)
+					db.profile.sell_next_vendor[itemid] = false -- Reset the sell flag
+				end
 				total = total + slot_values[bagslot]
 			end
 		end
@@ -212,7 +219,9 @@ end
 core.add_junk_to_tooltip = add_junk_to_tooltip
 
 function encode_bagslot(bag, slot) return (bag*100) + slot end
-function decode_bagslot(int) return math.floor(int/100), int % 100 end
+function decode_bagslot(int)
+	return math.floor(int/100), int % 100
+end
 core.encode_bagslot = encode_bagslot
 core.decode_bagslot = decode_bagslot
 
@@ -220,6 +229,7 @@ function drop_bagslot(bagslot, sell_only)
 	Debug("drop_bagslot", bagslot, sell_only and 'sell_only' or '')
 	Debug("At merchant?", core.at_merchant and 'yes' or 'no')
 	local bag, slot = decode_bagslot(bagslot)
+	print(bag, slot)
 	if CursorHasItem() then
 		return DEFAULT_CHAT_FRAME:AddMessage(("DropTheCheapestThing Error: Can't delete/sell items while an item is on the cursor. Aborting."):format(slot_contents[bagslot], GetContainerItemLink(bag, slot)), 1, 0, 0)
 	end
@@ -243,6 +253,23 @@ function drop_bagslot(bagslot, sell_only)
 	end
 end
 core.drop_bagslot = drop_bagslot
+
+function sell_next_vendor_items()
+	for bag = 0, NUM_BAG_SLOTS do
+		for slot = 1, GetContainerNumSlots(bag) do
+			local itemLink = GetContainerItemLink(bag, slot)
+			if itemLink then
+				local id = itemLink:match("item:(%d+)")
+				if core.db.profile.sell_next_vendor[id] == true then
+					drop_bagslot(encode_bagslot(bag, slot), true)
+					core.db.profile.sell_next_vendor[itemLink] = false -- Reset the sell flag
+				end
+			end
+		end
+	end
+end
+
+core.sell_next_vendor_items = sell_next_vendor_items
 
 -- Automatically delete unwanted items, or open items (like clams).
 -- To add/remove items, edit one of the following lists and (re)run the page.
@@ -306,17 +333,15 @@ AceTimer:ScheduleTimer(function() core:deleteAutoDeleteItems() end, 1)
 -- Handle Alt + click event
 function core:ALT_CLICK_ITEM(bag, slot)
 	local link = GetContainerItemLink(bag, slot)
-	local id = link
+	local id = link:match("item:(%d+)")
 	if id and IsAltKeyDown() then
 		if not core.db.profile.sell_next_vendor[id] == true then
 			-- Add item ID to ignoreList
 			core.db.profile.sell_next_vendor[id] = true
 			core:Print("Item "..id.." added to sell list.")
-			--core:BAG_UPDATE()
 		else
 			core.db.profile.sell_next_vendor[id] = false
 			core:Print("Item "..id.." removed from sell list.")
-			--core:BAG_UPDATE()
 		end
 	end
 end
