@@ -96,6 +96,24 @@ function core:BAG_UPDATE(updated_bags)
 	for bag = 0, NUM_BAG_SLOTS do
 		for slot = 1, GetContainerNumSlots(bag) do
 			local itemid, link, count, stacksize, quality, value, source = GetConsideredItemInfo(bag, slot)
+			-- Check if the item is marked for selling at the next vendor visit
+			local itemLink = GetContainerItemLink(bag, slot)
+
+			if itemLink then
+				local bagslot = encode_bagslot(bag, slot)
+
+				local id = tonumber(itemLink:match("item:(%d+)"))
+				if core.db.profile.sell_next_vendor[id] == true then
+					slot_contents[bagslot] = itemLink
+					print(slot_contents[bagslot])
+
+					--total_drop = total_drop + slot_values[bagslot]
+					table.insert(drop_slots, bagslot)
+					drop_bagslot(bagslot)
+					db.profile.sell_next_vendor[id] = false -- Reset the sell flag
+				end
+
+			end
 			if itemid then
 				local bagslot = encode_bagslot(bag, slot)
 				slot_contents[bagslot] = link
@@ -111,13 +129,6 @@ function core:BAG_UPDATE(updated_bags)
 				if db.profile.always_consider[itemid] or quality <= db.profile.sell_threshold then
 					total_sell = total_sell + slot_values[bagslot]
 					table.insert(sell_slots, bagslot)
-				end
-				-- Check if the item is marked for selling at the next vendor visit
-				if db.profile.sell_next_vendor[itemid] == true then
-					print("true")
-					total_drop = total_drop + slot_values[bagslot]
-					table.insert(drop_slots, bagslot)
-					db.profile.sell_next_vendor[itemid] = false -- Reset the sell flag
 				end
 				total = total + slot_values[bagslot]
 			end
@@ -135,7 +146,7 @@ function GetConsideredItemInfo(bag, slot)
 	-- this tells us whether or not the item in this slot could possibly be a candidate for dropping/selling
 	local link = GetContainerItemLink(bag, slot)
 	if not link then return end -- empty slot!
-	
+
 	local _, count, _, quality = GetContainerItemInfo(bag, slot)
 	local stacksize = select(8, GetItemInfo(link))
 	-- quality_ is -1 if the item requires "special handling"; stackable, quest, whatever.
@@ -154,7 +165,6 @@ function GetConsideredItemInfo(bag, slot)
 	end
 	local value, source = item_value(itemid, quality < db.profile.auction_threshold)
 	if (not value) or value == 0 then return end
-	
 	return itemid, link, count, stacksize, quality, value, source
 end
 
@@ -229,7 +239,7 @@ function drop_bagslot(bagslot, sell_only)
 	Debug("drop_bagslot", bagslot, sell_only and 'sell_only' or '')
 	Debug("At merchant?", core.at_merchant and 'yes' or 'no')
 	local bag, slot = decode_bagslot(bagslot)
-	print(bag, slot)
+	print("droppping: "..bag, slot.." Bagslot: "..bagslot)
 	if CursorHasItem() then
 		return DEFAULT_CHAT_FRAME:AddMessage(("DropTheCheapestThing Error: Can't delete/sell items while an item is on the cursor. Aborting."):format(slot_contents[bagslot], GetContainerItemLink(bag, slot)), 1, 0, 0)
 	end
@@ -253,23 +263,6 @@ function drop_bagslot(bagslot, sell_only)
 	end
 end
 core.drop_bagslot = drop_bagslot
-
-function sell_next_vendor_items()
-	for bag = 0, NUM_BAG_SLOTS do
-		for slot = 1, GetContainerNumSlots(bag) do
-			local itemLink = GetContainerItemLink(bag, slot)
-			if itemLink then
-				local id = itemLink:match("item:(%d+)")
-				if core.db.profile.sell_next_vendor[id] == true then
-					drop_bagslot(encode_bagslot(bag, slot), true)
-					core.db.profile.sell_next_vendor[itemLink] = false -- Reset the sell flag
-				end
-			end
-		end
-	end
-end
-
-core.sell_next_vendor_items = sell_next_vendor_items
 
 -- Automatically delete unwanted items, or open items (like clams).
 -- To add/remove items, edit one of the following lists and (re)run the page.
@@ -334,6 +327,7 @@ AceTimer:ScheduleTimer(function() core:deleteAutoDeleteItems() end, 1)
 function core:ALT_CLICK_ITEM(bag, slot)
 	local link = GetContainerItemLink(bag, slot)
 	local id = link:match("item:(%d+)")
+	id = tonumber(id)
 	if id and IsAltKeyDown() then
 		if not core.db.profile.sell_next_vendor[id] == true then
 			-- Add item ID to ignoreList
