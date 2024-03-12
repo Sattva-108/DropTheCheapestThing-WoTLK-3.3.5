@@ -392,15 +392,15 @@ end
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
 local function SetDialogPosition(dialog)
-	local frame = dialog.frame
-	frame:ClearAllPoints()
-
-	local adiBagsContainer = _G["AdiBagsContainer1"]
-	if IsAddOnLoaded("AdiBags") and adiBagsContainer and adiBagsContainer:IsShown() then
-		frame:SetPoint("TOP", adiBagsContainer, "BOTTOM", 0, -10) -- Attach the top of our frame to the bottom of AdiBagsContainer1
-	else
-		frame:SetPoint("CENTER", 0, -200) -- Set the position of the frame 200 px below the center
-	end
+	--local frame = dialog.frame
+	--frame:ClearAllPoints()
+	--
+	--local adiBagsContainer = _G["AdiBagsContainer1"]
+	--if IsAddOnLoaded("AdiBags") and adiBagsContainer and adiBagsContainer:IsShown() then
+	--	frame:SetPoint("TOP", adiBagsContainer, "BOTTOM", 0, -10) -- Attach the top of our frame to the bottom of AdiBagsContainer1
+	--else
+	--	frame:SetPoint("CENTER", 0, -200) -- Set the position of the frame 200 px below the center
+	--end
 end
 
 function module:ShowConfig()
@@ -408,10 +408,10 @@ function module:ShowConfig()
 	AceConfigDialog:SelectGroup("DropTheCheapestThing", "always") -- Open Always Consider tab
 	AceConfigDialog:Open("DropTheCheapestThing")
 
-	local adiBagsContainer = _G["AdiBagsContainer1"]
-	if IsAddOnLoaded("AdiBags") and adiBagsContainer and not adiBagsContainer:IsShown() then
-		adiBagsContainer:Show() -- show AdiBags bag
-	end
+	--local adiBagsContainer = _G["AdiBagsContainer1"]
+	--if IsAddOnLoaded("AdiBags") and adiBagsContainer and not adiBagsContainer:IsShown() then
+	--	adiBagsContainer:Show() -- show AdiBags bag
+	--end
 
 	local dialog = AceConfigDialog.OpenFrames["DropTheCheapestThing"]
 
@@ -451,22 +451,22 @@ function module:IsConfigShown()
 end
 
 function module:ToggleConfig()
-	local adiBagsContainer = _G["AdiBagsContainer1"]
+	--local adiBagsContainer = _G["AdiBagsContainer1"]
 
 	if self:IsConfigShown() then
 		self:HideConfig()
 
-		-- If AdiBags is loaded and the bag is shown, hide it when closing the config
-		if IsAddOnLoaded("AdiBags") and adiBagsContainer and adiBagsContainer:IsShown() then
-			adiBagsContainer:Hide()
-		end
+		---- If AdiBags is loaded and the bag is shown, hide it when closing the config
+		--if IsAddOnLoaded("AdiBags") and adiBagsContainer and adiBagsContainer:IsShown() then
+		--	adiBagsContainer:Hide()
+		--end
 	else
 		self:ShowConfig()
 
-		-- If AdiBags is loaded and the bag is not shown, show it when opening the config
-		if IsAddOnLoaded("AdiBags") and adiBagsContainer and not adiBagsContainer:IsShown() then
-			adiBagsContainer:Show()
-		end
+		---- If AdiBags is loaded and the bag is not shown, show it when opening the config
+		--if IsAddOnLoaded("AdiBags") and adiBagsContainer and not adiBagsContainer:IsShown() then
+		--	adiBagsContainer:Show()
+		--end
 	end
 end
 
