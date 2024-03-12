@@ -6,7 +6,7 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", ...
 
 local db, iterate_bags, slot_sorter, copper_to_pretty_money, encode_bagslot,
 	decode_bagslot, pretty_bagslot_name, drop_bagslot, add_junk_to_tooltip,
-	link_to_id, item_value, GetConsideredItemInfo, sell_next_vendor_items
+	link_to_id, item_value, GetConsideredItemInfo
 
 local drop_slots = {}
 local sell_slots = {}
@@ -112,7 +112,8 @@ function core:BAG_UPDATE(updated_bags)
 					total_sell = total_sell + slot_values[bagslot]
 					table.insert(sell_slots, bagslot)
 				end
-				if core.db.profile.sell_next_vendor[itemid] == true then
+				local characterName = UnitName("player") -- get the current character's name
+				if core.db.profile.sell_next_vendor[itemid] == characterName then
 					slot_contents[bagslot] = link
 					table.insert(sell_slots, bagslot)
 					total_sell = total_sell + slot_values[bagslot]
@@ -240,7 +241,13 @@ function drop_bagslot(bagslot, sell_only)
 	if core.at_merchant then
 		DEFAULT_CHAT_FRAME:AddMessage("Selling "..pretty_bagslot_name(bagslot).." for "..copper_to_pretty_money(slot_values[bagslot]))
 		UseContainerItem(bag, slot)
-		db.profile.sell_next_vendor = {}
+		local charName = UnitName("player") -- Get the name of the current character
+		for id, character in pairs(core.db.profile.sell_next_vendor) do
+			if character == charName then
+				core.db.profile.sell_next_vendor[id] = nil -- Remove the item from the sell list for the current character
+				break
+			end
+		end
 	else
 		DEFAULT_CHAT_FRAME:AddMessage("Dropping "..pretty_bagslot_name(bagslot).." worth "..copper_to_pretty_money(slot_values[bagslot]))
 		PickupContainerItem(bag, slot)
@@ -314,12 +321,13 @@ function core:ALT_CLICK_ITEM(bag, slot)
 	local id = link:match("item:(%d+)")
 	id = tonumber(id)
 	if id and IsAltKeyDown() then
-		if not core.db.profile.sell_next_vendor[id] == true then
+		local characterName = UnitName("player") -- get the current character's name
+		if core.db.profile.sell_next_vendor[id] ~= characterName then
 			-- Add item ID to ignoreList
-			core.db.profile.sell_next_vendor[id] = true
+			core.db.profile.sell_next_vendor[id] = characterName
 			core:Print(link.." |cFF00FF00added to sell list.|r") -- Green color for "added"
 		else
-			core.db.profile.sell_next_vendor[id] = false
+			core.db.profile.sell_next_vendor[id] = nil
 			core:Print(link.." |cFFFF0000removed from sell list.|r") -- Red color for "removed"
 		end
 	end
