@@ -11,3 +11,10 @@ GUI:
 
 Profiles:
 - Make some kind of safe check, may be popup, confirmation, to use same delete list on new character...
+
+Sell on Next Vendor:
+- Create icon on an item, with something like COIN, that indicates it will be sold.
+- Make a keybind instead of alt-RightClick in the Blizzard Keybinds.
+
+Global:
+- Remove double print in chat when selling.

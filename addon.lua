@@ -96,24 +96,6 @@ function core:BAG_UPDATE(updated_bags)
 	for bag = 0, NUM_BAG_SLOTS do
 		for slot = 1, GetContainerNumSlots(bag) do
 			local itemid, link, count, stacksize, quality, value, source = GetConsideredItemInfo(bag, slot)
-			-- Check if the item is marked for selling at the next vendor visit
-			local itemLink = GetContainerItemLink(bag, slot)
-
-			if itemLink then
-				local bagslot = encode_bagslot(bag, slot)
-
-				local id = tonumber(itemLink:match("item:(%d+)"))
-				if core.db.profile.sell_next_vendor[id] == true then
-					slot_contents[bagslot] = itemLink
-					print(slot_contents[bagslot])
-
-					--total_drop = total_drop + slot_values[bagslot]
-					table.insert(drop_slots, bagslot)
-					drop_bagslot(bagslot)
-					db.profile.sell_next_vendor[id] = false -- Reset the sell flag
-				end
-
-			end
 			if itemid then
 				local bagslot = encode_bagslot(bag, slot)
 				slot_contents[bagslot] = link
@@ -129,6 +111,11 @@ function core:BAG_UPDATE(updated_bags)
 				if db.profile.always_consider[itemid] or quality <= db.profile.sell_threshold then
 					total_sell = total_sell + slot_values[bagslot]
 					table.insert(sell_slots, bagslot)
+				end
+				if core.db.profile.sell_next_vendor[itemid] == true then
+					slot_contents[bagslot] = link
+					table.insert(sell_slots, bagslot)
+					total_sell = total_sell + slot_values[bagslot]
 				end
 				total = total + slot_values[bagslot]
 			end
@@ -158,10 +145,8 @@ function GetConsideredItemInfo(bag, slot)
 
 	local itemid = link_to_id(link)
 	if db.profile.never_consider[itemid] then return end
-	if not db.profile.always_consider[itemid] then
-		if quality > db.profile.threshold and quality > db.profile.sell_threshold then
-			return
-		end
+	if not db.profile.always_consider[itemid] and quality > db.profile.threshold and quality > db.profile.sell_threshold and not core.db.profile.sell_next_vendor[itemid] then
+		return
 	end
 	local value, source = item_value(itemid, quality < db.profile.auction_threshold)
 	if (not value) or value == 0 then return end
@@ -239,7 +224,6 @@ function drop_bagslot(bagslot, sell_only)
 	Debug("drop_bagslot", bagslot, sell_only and 'sell_only' or '')
 	Debug("At merchant?", core.at_merchant and 'yes' or 'no')
 	local bag, slot = decode_bagslot(bagslot)
-	print("droppping: "..bag, slot.." Bagslot: "..bagslot)
 	if CursorHasItem() then
 		return DEFAULT_CHAT_FRAME:AddMessage(("DropTheCheapestThing Error: Can't delete/sell items while an item is on the cursor. Aborting."):format(slot_contents[bagslot], GetContainerItemLink(bag, slot)), 1, 0, 0)
 	end
@@ -256,6 +240,7 @@ function drop_bagslot(bagslot, sell_only)
 	if core.at_merchant then
 		DEFAULT_CHAT_FRAME:AddMessage("Selling "..pretty_bagslot_name(bagslot).." for "..copper_to_pretty_money(slot_values[bagslot]))
 		UseContainerItem(bag, slot)
+		db.profile.sell_next_vendor = {}
 	else
 		DEFAULT_CHAT_FRAME:AddMessage("Dropping "..pretty_bagslot_name(bagslot).." worth "..copper_to_pretty_money(slot_values[bagslot]))
 		PickupContainerItem(bag, slot)
@@ -332,10 +317,10 @@ function core:ALT_CLICK_ITEM(bag, slot)
 		if not core.db.profile.sell_next_vendor[id] == true then
 			-- Add item ID to ignoreList
 			core.db.profile.sell_next_vendor[id] = true
-			core:Print("Item "..id.." added to sell list.")
+			core:Print(link.." |cFF00FF00added to sell list.|r") -- Green color for "added"
 		else
 			core.db.profile.sell_next_vendor[id] = false
-			core:Print("Item "..id.." removed from sell list.")
+			core:Print(link.." |cFFFF0000removed from sell list.|r") -- Red color for "removed"
 		end
 	end
 end
@@ -344,5 +329,6 @@ hooksecurefunc("ContainerFrameItemButton_OnModifiedClick",function(self,button)
 	if button == "RightButton" then
 		local bag,slot=self:GetParent():GetID(),self:GetID();
 		core:ALT_CLICK_ITEM(bag, slot)
+		core:BAG_UPDATE()
 	end
 end);
