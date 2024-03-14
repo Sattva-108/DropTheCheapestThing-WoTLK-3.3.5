@@ -112,11 +112,19 @@ function core:BAG_UPDATE(updated_bags)
 					total_sell = total_sell + slot_values[bagslot]
 					table.insert(sell_slots, bagslot)
 				end
-				local characterName = UnitName("player") -- get the current character's name
-				if core.db.profile.sell_next_vendor[itemid] == characterName then
-					slot_contents[bagslot] = link
-					table.insert(sell_slots, bagslot)
-					total_sell = total_sell + slot_values[bagslot]
+				local characterName = UnitName("player")
+				if core.db.profile.sell_next_vendor[itemid] then
+					for _, uniqueIdentifier in ipairs(core.db.profile.sell_next_vendor[itemid]) do
+						local storedCharacterName, storedItemName = string.match(uniqueIdentifier, "(.-):(.*)")
+						local name = GetItemInfo(link)
+						if storedCharacterName == characterName and storedItemName == name then
+							-- This item matches both the character and the specific item name
+							slot_contents[bagslot] = link
+							table.insert(sell_slots, bagslot)
+							total_sell = total_sell + slot_values[bagslot]
+							break -- Found a match, no need to check further
+						end
+					end
 				end
 				total = total + slot_values[bagslot]
 			end
@@ -242,10 +250,14 @@ function drop_bagslot(bagslot, sell_only)
 		DEFAULT_CHAT_FRAME:AddMessage("Selling "..pretty_bagslot_name(bagslot).." for "..copper_to_pretty_money(slot_values[bagslot]))
 		UseContainerItem(bag, slot)
 		local charName = UnitName("player") -- Get the name of the current character
-		for id, character in pairs(core.db.profile.sell_next_vendor) do
-			if character == charName then
-				core.db.profile.sell_next_vendor[id] = nil -- Remove the item from the sell list for the current character
-				break
+		for id, entries in pairs(core.db.profile.sell_next_vendor) do
+			for i = #entries, 1, -1 do
+				if entries[i]:match("^(.-):") == charName then
+					table.remove(entries, i)
+				end
+			end
+			if #entries == 0 then
+				core.db.profile.sell_next_vendor[id] = nil
 			end
 		end
 	else
@@ -320,15 +332,26 @@ function core:ALT_CLICK_ITEM(bag, slot)
 	local link = GetContainerItemLink(bag, slot)
 	local id = link:match("item:(%d+)")
 	id = tonumber(id)
+	local name = GetItemInfo(link) -- Get the full name of the item, including random enchantments
 	if id and IsAltKeyDown() then
-		local characterName = UnitName("player") -- get the current character's name
-		if core.db.profile.sell_next_vendor[id] ~= characterName then
-			-- Add item ID to ignoreList
-			core.db.profile.sell_next_vendor[id] = characterName
-			core:Print(link.." |cFF00FF00added to sell list.|r") -- Green color for "added"
+		local characterName = UnitName("player")
+		if not core.db.profile.sell_next_vendor[id] then
+			core.db.profile.sell_next_vendor[id] = {}
+		end
+		local uniqueIdentifier = characterName .. ":" .. name
+		-- Check if this unique identifier is already in the list
+		if not tContains(core.db.profile.sell_next_vendor[id], uniqueIdentifier) then
+			table.insert(core.db.profile.sell_next_vendor[id], uniqueIdentifier)
+			core:Print(link.." |cFF00FF00added to sell list.|r")
 		else
-			core.db.profile.sell_next_vendor[id] = nil
-			core:Print(link.." |cFFFF0000removed from sell list.|r") -- Red color for "removed"
+			-- If it's already in the list, remove it
+			for i, v in ipairs(core.db.profile.sell_next_vendor[id]) do
+				if v == uniqueIdentifier then
+					table.remove(core.db.profile.sell_next_vendor[id], i)
+					break
+				end
+			end
+			core:Print(link.." |cFFFF0000removed from sell list.|r")
 		end
 	end
 end
