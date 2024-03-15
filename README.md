@@ -3,7 +3,7 @@ It's a fork, improvement, for an outdated version of 3.3.5 addon.<br>
 **Only compatible with 3.3.5 - WoTLK game client.**
 
 ## Support
-- Support my development on **[Boosty](https://boosty.to/sattva108)**
+- Show Love and Support my goals on **[Boosty](https://boosty.to/sattva108)**
 
 ### Original Author: [Kemayo](https://legacy.curseforge.com/members/kemayo/projects)
 
