@@ -19,7 +19,7 @@ It's a fork, improvement, for an outdated version of 3.3.5 addon.<br>
 - Add Profiles Tab
    - **Switch, Create, Delete** profile.
 
-## Videos, Screenshots.
+## What's new in this version?
 
 - **Sort items by Categories**
 
