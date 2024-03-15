@@ -15,6 +15,10 @@ Profiles:
 Sell on Next Vendor:
 - Create icon on an item, with something like COIN, that indicates it will be sold.
 - Make a keybind instead of alt-RightClick in the Blizzard Keybinds.
+- Config:
+    - Optional coin anchor
+    - Optional coin position
+    - Optional coin size
 
 Global:
 - Remove double print in chat when selling.

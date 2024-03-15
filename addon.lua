@@ -6,10 +6,7 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", ...
 
 local db, iterate_bags, slot_sorter, copper_to_pretty_money, encode_bagslot,
 	decode_bagslot, pretty_bagslot_name, drop_bagslot, add_junk_to_tooltip,
-	link_to_id, item_value, GetConsideredItemInfo, markNormalBags
-
-local BAG_COUNT = 5
-
+	link_to_id, item_value, GetConsideredItemInfo, markItemForSale
 
 local drop_slots = {}
 local sell_slots = {}
@@ -84,7 +81,7 @@ function item_value(item, force_vendor)
 end
 core.item_value = item_value
 
-function core:BAG_UPDATE(updated_bags)
+function core:BAG_UPDATE()
 	table.wipe(drop_slots)
 	table.wipe(sell_slots)
 	table.wipe(slot_contents)
@@ -97,8 +94,15 @@ function core:BAG_UPDATE(updated_bags)
 	local total, total_sell, total_drop = 0, 0, 0
 
 	for bag = 0, NUM_BAG_SLOTS do
-		for slot = 1, GetContainerNumSlots(bag) do
+		local bagsSlotCount = GetContainerNumSlots(bag)
+		for slot = 1, bagsSlotCount do
 			local itemid, link, count, stacksize, quality, value, source = GetConsideredItemInfo(bag, slot)
+
+			-- First Remove all the coin textures.
+			local itemButton = _G["ContainerFrame" .. bag + 1 .. "Item" .. bagsSlotCount - slot + 1]
+			if itemButton and itemButton.textureFrame then
+				itemButton.textureFrame:Hide()
+			end
 			if itemid then
 				local bagslot = encode_bagslot(bag, slot)
 				slot_contents[bagslot] = link
@@ -130,10 +134,12 @@ function core:BAG_UPDATE(updated_bags)
 					end
 				end
 				total = total + slot_values[bagslot]
+
+				-- New section: Directly mark items for sell_next_vendor here
+				markItemForSale(itemButton, itemid, link, characterName)
 			end
 		end
 	end
-	markNormalBags()
 	
 	table.sort(drop_slots, slot_sorter)
 	table.sort(sell_slots, slot_sorter)
@@ -368,57 +374,30 @@ hooksecurefunc("ContainerFrameItemButton_OnModifiedClick",function(self,button)
 	end
 end);
 
+-- Function for marking directly in the loop
+function markItemForSale(itemButton, itemid, link, characterName)
+	local frame = itemButton.textureFrame
+	if not frame then
+		frame = CreateFrame("Frame", nil, itemButton)
+		frame:SetAllPoints(itemButton)
+		itemButton.textureFrame = frame
 
-function markNormalBags()
-	for containerNumber = 0, NUM_BAG_SLOTS do
-		local container = _G["ContainerFrame" .. containerNumber + 1]
-		if container:IsShown() then
-			local bagsSlotCount = GetContainerNumSlots(containerNumber)
-			for slotNumber = 1, bagsSlotCount do
-				local itemButton = _G["ContainerFrame" .. containerNumber + 1 .. "Item" .. bagsSlotCount - slotNumber + 1]
-				local bagNumber = itemButton:GetParent():GetID()
-				local actualSlotNumber = itemButton:GetID()
-				local bagslot = encode_bagslot(bagNumber, actualSlotNumber)
-				local link = slot_contents[bagslot]
-				local id = link_to_id(link)
-				local characterName = UnitName("player")
+		local texture = frame:CreateTexture(nil, "OVERLAY")
+		texture:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
+		texture:SetSize(30, 30)
+		frame.texture = texture
+		frame:Hide()
+	end
 
-				-- Check if the item button already has a frame
-				local frame = itemButton.textureFrame
-				if not frame then
-					-- Create a frame to hold the texture
-					frame = CreateFrame("Frame", nil, itemButton)
-					frame:SetAllPoints(itemButton)
-					itemButton.textureFrame = frame
-				end
-
-				-- Check if the frame already has a texture
-				local texture = frame.texture
-				if not texture then
-					-- Create the texture within the frame
-					texture = frame:CreateTexture(nil, "OVERLAY")
-					texture:SetPoint("TOPRIGHT",frame,"TOPRIGHT")
-					texture:SetSize(30, 30)
-					frame.texture = texture
-				end
-
-				if link then
-					local name = GetItemInfo(link)
-					local uniqueIdentifier = characterName .. ":" .. (name or "")
-
-					if core.db.profile.sell_next_vendor[id] and tContains(core.db.profile.sell_next_vendor[id], uniqueIdentifier) then
-						-- Set texture for items in sell_next_vendor table
-						frame:Show()
-						texture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
-					else
-						frame:Hide() -- Hide the frame (and the texture) for items not in the sell_next_vendor table
-					end
-				else
-					frame:Hide() -- Hide the frame (and the texture) for empty slots
-				end
-			end
+	local name = GetItemInfo(link)
+	if link then
+		local uniqueIdentifier = characterName .. ":" .. (name or "")
+		if core.db.profile.sell_next_vendor[itemid] and tContains(core.db.profile.sell_next_vendor[itemid], uniqueIdentifier) then
+			frame:Show()
+			frame.texture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
 		end
 	end
 end
-core.markNormalBags = markNormalBags
+core.markItemForSale = markItemForSale
+
 
