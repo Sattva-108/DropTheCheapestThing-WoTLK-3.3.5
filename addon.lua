@@ -96,13 +96,13 @@ function core:BAG_UPDATE()
 
 	for bag = 0, NUM_BAG_SLOTS do
 		local bagsSlotCount = GetContainerNumSlots(bag)
-		for slot = 1, bagsSlotCount do
+		for slot = 1, 360 do
 			local itemid, link, count, stacksize, quality, value, source = GetConsideredItemInfo(bag, slot)
 			local itemButton
 
 			if IsAddOnLoaded("AdiBags") then
 				 itemButton = _G["AdiBagsItemButton" .. slot]
-				--print(itemButton)
+				print(itemButton)
 			else
 				-- First Remove all the coin textures.
 				 itemButton = _G["ContainerFrame" .. bag + 1 .. "Item" .. bagsSlotCount - slot + 1]
@@ -143,6 +143,7 @@ function core:BAG_UPDATE()
 				total = total + slot_values[bagslot]
 
 				-- New section: Directly mark items for sell_next_vendor here
+				print(itemButton, itemid, link, characterName)
 				markItemForSale(itemButton, itemid, link, characterName)
 			end
 		end
@@ -386,7 +387,7 @@ function markItemForSale(itemButton, itemid, link, characterName)
 	local AdiBags = LibStub("AceAddon-3.0"):GetAddon("AdiBags", true)
 	--if not AdiBags then return end
 	--if AdiBags then print("AdiBags: True") end
-	local ItemButtonClass = AdiBags:GetClass("ItemButton")
+	--local ItemButtonClass = AdiBags:GetClass("ItemButton")
 
 	--if ItemButtonClass then print("ItemButtonClass: True") end
 	--
@@ -410,51 +411,78 @@ function markItemForSale(itemButton, itemid, link, characterName)
 	--		end)
 	--	end
 	--end
-	if ItemButtonClass then
-		local prototype = ItemButtonClass.prototype
-		if prototype and prototype.Update then
+	--if ItemButtonClass then
+	--	local prototype = ItemButtonClass.prototype
+	--	if prototype and prototype.Update then
+	--
+	--		hooksecurefunc(prototype, "Update", function(self)
+	--			-- Create a new texture frame for the upgrade texture
+	--			if not self.customTextureFrame then
+	--				local customTextureFrame = CreateFrame("Frame", nil, self)
+	--				customTextureFrame:SetSize(18, 18)
+	--				customTextureFrame:SetPoint("TOP", self.IconTexture, "TOPLEFT", 10, -2)
+	--
+	--				local upgradeTexture = customTextureFrame:CreateTexture(nil, "OVERLAY")
+	--				upgradeTexture:SetAllPoints()
+	--				upgradeTexture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
+	--				customTextureFrame.texture = upgradeTexture
+	--
+	--				self.customTextureFrame = customTextureFrame
+	--			end
+	--		end)
+	--	end
+	--end
 
-			hooksecurefunc(prototype, "Update", function(self)
-				-- Create a new texture frame for the upgrade texture
-				if not self.customTextureFrame then
-					local customTextureFrame = CreateFrame("Frame", nil, self)
-					customTextureFrame:SetSize(18, 18)
-					customTextureFrame:SetPoint("TOP", self.IconTexture, "TOPLEFT", 10, -2)
+	if AdiBags then
+		for i = 1, 360 do
+			local frame = _G["AdiBagsItemButton"..i]
+			if frame then
+				local _, bag, slot = strsplit('-', tostring(frame))
 
-					local upgradeTexture = customTextureFrame:CreateTexture(nil, "OVERLAY")
-					upgradeTexture:SetAllPoints()
-					upgradeTexture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
-					customTextureFrame.texture = upgradeTexture
+				bag = tonumber(bag)
+				slot = tonumber(slot)
 
-					self.customTextureFrame = customTextureFrame
+				if bag and slot then
+					local name =  frame.name
+					if name then
+						local uniqueIdentifier = characterName .. ":" .. name
+if core.db.profile.sell_next_vendor[itemid] then print(itemid) end
+							--print(uniqueIdentifier)
+							if core.db.profile.sell_next_vendor[itemid] and tContains(core.db.profile.sell_next_vendor[itemid], uniqueIdentifier) then
+								print(itemButton)
+							end
+
+					end
 				end
-			end)
+			end
 		end
-	end
 
+	else
 
-	local frame = itemButton.textureFrame
-	if not frame then
-		frame = CreateFrame("Frame", nil, itemButton)
-		frame:SetAllPoints(itemButton)
-		frame:SetFrameStrata("TOOLTIP")
+		local frame = itemButton.textureFrame
+		if not frame then
+			frame = CreateFrame("Frame", nil, itemButton)
+			frame:SetAllPoints(itemButton)
+			frame:SetFrameStrata("TOOLTIP")
 
-		itemButton.textureFrame = frame
+			itemButton.textureFrame = frame
 
-		local texture = frame:CreateTexture(nil, "OVERLAY")
-		texture:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
-		texture:SetSize(30, 30)
-		frame.texture = texture
-		frame:Hide()
-	end
-
-	local name = GetItemInfo(link)
-	if link then
-		local uniqueIdentifier = characterName .. ":" .. (name or "")
-		if core.db.profile.sell_next_vendor[itemid] and tContains(core.db.profile.sell_next_vendor[itemid], uniqueIdentifier) then
-			frame:Show()
-			frame.texture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
+			local texture = frame:CreateTexture(nil, "OVERLAY")
+			texture:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
+			texture:SetSize(30, 30)
+			frame.texture = texture
+			frame:Hide()
 		end
+
+		local name = GetItemInfo(link)
+		if link then
+			local uniqueIdentifier = characterName .. ":" .. (name or "")
+			if core.db.profile.sell_next_vendor[itemid] and tContains(core.db.profile.sell_next_vendor[itemid], uniqueIdentifier) then
+				frame:Show()
+				frame.texture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
+			end
+		end
+
 	end
 end
 core.markItemForSale = markItemForSale
