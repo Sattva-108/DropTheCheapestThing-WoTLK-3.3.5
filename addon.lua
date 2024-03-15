@@ -6,7 +6,7 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", ...
 
 local db, iterate_bags, slot_sorter, copper_to_pretty_money, encode_bagslot,
 	decode_bagslot, pretty_bagslot_name, drop_bagslot, add_junk_to_tooltip,
-	link_to_id, item_value, GetConsideredItemInfo, markItemForSale
+	link_to_id, item_value, GetConsideredItemInfo, markItemForSale, markAdiBagBags
 
 local drop_slots = {}
 local sell_slots = {}
@@ -82,6 +82,7 @@ end
 core.item_value = item_value
 
 function core:BAG_UPDATE()
+	--markAdiBagBags()
 	table.wipe(drop_slots)
 	table.wipe(sell_slots)
 	table.wipe(slot_contents)
@@ -97,9 +98,15 @@ function core:BAG_UPDATE()
 		local bagsSlotCount = GetContainerNumSlots(bag)
 		for slot = 1, bagsSlotCount do
 			local itemid, link, count, stacksize, quality, value, source = GetConsideredItemInfo(bag, slot)
+			local itemButton
 
-			-- First Remove all the coin textures.
-			local itemButton = _G["ContainerFrame" .. bag + 1 .. "Item" .. bagsSlotCount - slot + 1]
+			if IsAddOnLoaded("AdiBags") then
+				 itemButton = _G["AdiBagsItemButton" .. slot]
+				--print(itemButton)
+			else
+				-- First Remove all the coin textures.
+				 itemButton = _G["ContainerFrame" .. bag + 1 .. "Item" .. bagsSlotCount - slot + 1]
+			end
 			if itemButton and itemButton.textureFrame then
 				itemButton.textureFrame:Hide()
 			end
@@ -376,10 +383,62 @@ end);
 
 -- Function for marking directly in the loop
 function markItemForSale(itemButton, itemid, link, characterName)
+	local AdiBags = LibStub("AceAddon-3.0"):GetAddon("AdiBags", true)
+	--if not AdiBags then return end
+	--if AdiBags then print("AdiBags: True") end
+	local ItemButtonClass = AdiBags:GetClass("ItemButton")
+
+	--if ItemButtonClass then print("ItemButtonClass: True") end
+	--
+	--if ItemButtonClass then
+	--	local prototype = ItemButtonClass.prototype
+	--	if prototype then
+	--		print("Content of 'prototype' in ItemButtonClass:")
+	--		for key, value in pairs(prototype) do
+	--			print(key, value)
+	--		end
+	--	else
+	--		print("No 'prototype' found in ItemButtonClass.")
+	--	end
+	--end
+	--if ItemButtonClass then
+	--	local prototype = ItemButtonClass.prototype
+	--	if prototype and prototype.OnRelease then
+	--		hooksecurefunc(prototype, "OnRelease", function(self)
+	--				print("Custom logging: OnCreate method called in ItemButtonClass prototype")
+	--
+	--		end)
+	--	end
+	--end
+	if ItemButtonClass then
+		local prototype = ItemButtonClass.prototype
+		if prototype and prototype.Update then
+
+			hooksecurefunc(prototype, "Update", function(self)
+				-- Create a new texture frame for the upgrade texture
+				if not self.customTextureFrame then
+					local customTextureFrame = CreateFrame("Frame", nil, self)
+					customTextureFrame:SetSize(18, 18)
+					customTextureFrame:SetPoint("TOP", self.IconTexture, "TOPLEFT", 10, -2)
+
+					local upgradeTexture = customTextureFrame:CreateTexture(nil, "OVERLAY")
+					upgradeTexture:SetAllPoints()
+					upgradeTexture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
+					customTextureFrame.texture = upgradeTexture
+
+					self.customTextureFrame = customTextureFrame
+				end
+			end)
+		end
+	end
+
+
 	local frame = itemButton.textureFrame
 	if not frame then
 		frame = CreateFrame("Frame", nil, itemButton)
 		frame:SetAllPoints(itemButton)
+		frame:SetFrameStrata("TOOLTIP")
+
 		itemButton.textureFrame = frame
 
 		local texture = frame:CreateTexture(nil, "OVERLAY")
@@ -399,5 +458,26 @@ function markItemForSale(itemButton, itemid, link, characterName)
 	end
 end
 core.markItemForSale = markItemForSale
+
+
+function markAdiBagBags()
+	-- For some reason, AdiBags can have way more buttons than the actual amount of bag slots... not sure how or why.
+	for i = 1, 360 do
+		local itemButton = _G["AdiBagsItemButton" .. i]
+		if itemButton then
+			local _, bag, slot = strsplit('-', tostring(itemButton))
+
+			bag = tonumber(bag)
+			slot = tonumber(slot)
+
+			if bag and slot then
+				--print(bag, slot, itemButton)
+			end
+		end
+	end
+end
+core.markAdiBagBags = markAdiBagBags
+
+
 
 
