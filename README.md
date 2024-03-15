@@ -36,8 +36,8 @@ https://github.com/Sattva-108/DropTheCheapestThing-WoTLK-3.3.5/assets/74269253/2
 https://github.com/Sattva-108/DropTheCheapestThing-WoTLK-3.3.5/assets/74269253/a88dabb9-9f19-44d5-9b22-602e631460c9
 
 
-- WORK IN PROGRESS: Sell items on Next Vendor (alt-right click item in bag)
-Currently works only with normal (blizzard bags), and cannot guarantee, that it's perfect, use on your own risk.
+- WORK IN PROGRESS: Sell items on Next Vendor (alt-right click item in bag)<br>
+Currently works only with normal (blizzard bags), and cannot guarantee, that it's perfect, use on your own risk.<br>
 Can test in my **[developer branch - DropNextVendor](https://github.com/Sattva-108/DropTheCheapestThing-WoTLK-3.3.5/tree/dropNextVendor)**
 
 https://github.com/Sattva-108/DropTheCheapestThing-WoTLK-3.3.5/assets/74269253/8c0b8235-30ab-4a16-a7d4-7f64bdf2b23a
