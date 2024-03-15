@@ -18,3 +18,7 @@ Sell on Next Vendor:
 
 Global:
 - Remove double print in chat when selling.
+    (This is actually only for IF you have interracted with NPC multiple times -
+    e.g. Interract with Mouseover bind on mousewheel)
+-
+

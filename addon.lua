@@ -6,7 +6,10 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", ...
 
 local db, iterate_bags, slot_sorter, copper_to_pretty_money, encode_bagslot,
 	decode_bagslot, pretty_bagslot_name, drop_bagslot, add_junk_to_tooltip,
-	link_to_id, item_value, GetConsideredItemInfo
+	link_to_id, item_value, GetConsideredItemInfo, markNormalBags
+
+local BAG_COUNT = 5
+
 
 local drop_slots = {}
 local sell_slots = {}
@@ -130,6 +133,7 @@ function core:BAG_UPDATE(updated_bags)
 			end
 		end
 	end
+	markNormalBags()
 	
 	table.sort(drop_slots, slot_sorter)
 	table.sort(sell_slots, slot_sorter)
@@ -315,9 +319,9 @@ local function onItemPush()
 end
 
 -- Register event to trigger when an item is pushed to the bag
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("ITEM_PUSH")
-frame:SetScript("OnEvent", onItemPush)
+local customFrame = CreateFrame("Frame")
+customFrame:RegisterEvent("ITEM_PUSH")
+customFrame:SetScript("OnEvent", onItemPush)
 
 -- run delete items function initially with delay for DB to have time to init.
 AceTimer:ScheduleTimer(function() core:deleteAutoDeleteItems() end, 1)
@@ -363,3 +367,58 @@ hooksecurefunc("ContainerFrameItemButton_OnModifiedClick",function(self,button)
 		core:BAG_UPDATE()
 	end
 end);
+
+
+function markNormalBags()
+	for containerNumber = 0, NUM_BAG_SLOTS do
+		local container = _G["ContainerFrame" .. containerNumber + 1]
+		if container:IsShown() then
+			local bagsSlotCount = GetContainerNumSlots(containerNumber)
+			for slotNumber = 1, bagsSlotCount do
+				local itemButton = _G["ContainerFrame" .. containerNumber + 1 .. "Item" .. bagsSlotCount - slotNumber + 1]
+				local bagNumber = itemButton:GetParent():GetID()
+				local actualSlotNumber = itemButton:GetID()
+				local bagslot = encode_bagslot(bagNumber, actualSlotNumber)
+				local link = slot_contents[bagslot]
+				local id = link_to_id(link)
+				local characterName = UnitName("player")
+
+				-- Check if the item button already has a frame
+				local frame = itemButton.textureFrame
+				if not frame then
+					-- Create a frame to hold the texture
+					frame = CreateFrame("Frame", nil, itemButton)
+					frame:SetAllPoints(itemButton)
+					itemButton.textureFrame = frame
+				end
+
+				-- Check if the frame already has a texture
+				local texture = frame.texture
+				if not texture then
+					-- Create the texture within the frame
+					texture = frame:CreateTexture(nil, "OVERLAY")
+					texture:SetPoint("TOPRIGHT",frame,"TOPRIGHT")
+					texture:SetSize(30, 30)
+					frame.texture = texture
+				end
+
+				if link then
+					local name = GetItemInfo(link)
+					local uniqueIdentifier = characterName .. ":" .. (name or "")
+
+					if core.db.profile.sell_next_vendor[id] and tContains(core.db.profile.sell_next_vendor[id], uniqueIdentifier) then
+						-- Set texture for items in sell_next_vendor table
+						frame:Show()
+						texture:SetTexture("interface\\buttons\\ui-grouploot-coin-up.blp")
+					else
+						frame:Hide() -- Hide the frame (and the texture) for items not in the sell_next_vendor table
+					end
+				else
+					frame:Hide() -- Hide the frame (and the texture) for empty slots
+				end
+			end
+		end
+	end
+end
+core.markNormalBags = markNormalBags
+
